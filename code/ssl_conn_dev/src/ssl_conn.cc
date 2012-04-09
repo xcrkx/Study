@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <boost/asio.hpp>
@@ -27,13 +28,16 @@ SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 	ERR_load_BIO_strings();
 	SSL_library_init();
 
-	SSL_METHOD *meth = (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
+	// Check for "openssl 0.9.8o release" when using SSL_CTX_new
+	#if OPENSSL_VERSION_NUMBER == 0x0009080ff
+		SSL_METHOD *meth;
+	#else
+		const SSL_METHOD *meth;
+	#endif
 
+    meth = (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
 	ctx = SSL_CTX_new(meth);
 	if (!ctx) print_err();
-
-    const SSL_METHOD *meth 	= (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
-	ctx = SSL_CTX_new(meth);
 
 	char password[] = "test";
 	SSL_CTX_set_default_passwd_cb(ctx, &pem_passwd_cb); //passphrase for both the same
@@ -119,10 +123,8 @@ int SSL_CONN::receive(unsigned char *buf) {
  */
 void SSL_CONN::handshake() {
 
-	int round = 0;
 	int done = 0;
 	while (!done) {
-		cout << "Round " << round++ << endl;
 		/* Perform the handshake. This in turn will activate the
 		 * underlying connect BIO and a socket connection will be made
 		 */
