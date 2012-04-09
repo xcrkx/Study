@@ -4,56 +4,58 @@
  *  Created on: 14.03.2012
  *      Author: aureliano
  */
+#include <unistd.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <boost/asio.hpp>
 #include <iostream>
 #include <string>
 
-#include "server.hh"
 #include "ssl_conn.hh"
 
 int main() {
-	Server server = Server();
-	server.start();
-	return 0;
-}
 
-
-Server::Server() {
-	cout << "Server: Starting server" << endl;
-}
-
-Server::~Server() {
-
-}
-
-void Server::start() {
+	cout << "Server: started" << endl;
 
 	try {
+		boost::system::error_code ec;
 		boost::asio::io_service io_service;
-		// listen on port 50012
 		tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v4(), 50012));
 
 		tcp::socket socket(io_service);
-		boost::system::error_code ec;
-		acceptor.accept(socket, ec);
-		if(!ec)
-			cout << "Server: connected" << endl;
 
-		SSL_CONN ssl_conn(&socket, SERVER);
-		ssl_conn.start();
+		for(;;) {
+			cout << "Server: Ready to accept new connection" << endl;
+			acceptor.accept(socket, ec);
 
-		// Lets start communicating over a secure connection
-		// ssl_conn.send(&buf);
-		// ssl_conn.receive(&buf);
+			if(!ec)
+				cout << "Server: connected" << endl;
 
-		cout << "Server: Closing" << endl;
-		socket.close();
+			SSL_CONN ssl_conn(&socket, SERVER);
+			ssl_conn.start();
+
+			// start ssl communication
+			int tries = 5, test, len;
+			while (0 < tries--) {
+
+				if ((len = ssl_conn.receive(&test, sizeof(int))) > 0) {
+
+					cout << "Server: SSL: Received " << len << " bytes: " << test << endl;
+					tries = 5; // reset tries
+				}
+				sleep(1);
+			}
+
+			cout << "Server: Closing" << endl;
+			socket.close();
+		}
+
+
 
 
 	} catch (std::exception& e) {
 		std::cerr << e.what() << std::endl;
 	}
 
+	return 0;
 }

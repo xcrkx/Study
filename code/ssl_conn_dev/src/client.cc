@@ -12,28 +12,10 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "client.hh"
 #include "ssl_conn.hh"
 
 
 int main() {
-	Client client = Client();
-	client.connect();
-	return 0;
-}
-
-
-Client::Client() {
-	cout << "Client: Starting client" << endl;
-
-}
-
-Client::~Client() {
-	// destructor
-}
-
-void Client::connect() {
-
 
 	try {
 		boost::asio::io_service io_service;
@@ -53,19 +35,21 @@ void Client::connect() {
 		SSL_CONN ssl_conn(&socket, CLIENT);
 		ssl_conn.start();
 
-		// Lets start communicating over a secure connection
-		// ssl_conn.send(&buf);
-		// ssl_conn.receive(&buf);
+		// start ssl communication
+		int test = 43;
+		if (ssl_conn.send(&test, sizeof(int)))
+			cout << "Client: SSL: Sent mystical number..." << endl;
 
 		cout << "Client: Closing" << endl;
-
 		socket.close();
 
+		sleep(2);
 
 	} catch (std::exception& e) {
 		std::cerr << e.what() << std::endl;
 	}
 
+	return 0;
 }
 
 

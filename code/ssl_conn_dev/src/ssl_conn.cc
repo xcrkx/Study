@@ -79,11 +79,7 @@ SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 }
 
 SSL_CONN::~SSL_CONN() {
-	// todo ...
-	cout << "deconstructor end" << endl;
-
 	SSL_shutdown(conn);
-
 	ERR_free_strings();
 	SSL_CTX_free(ctx);
 	SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
@@ -94,24 +90,71 @@ void SSL_CONN::start() {
 	// Start SSL-connection as client
 	(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
 
-	handshake();
+	do_handshake();
+
+	cout << str_role << ": tls complete" << endl;
 }
 
-int SSL_CONN::send(unsigned char *buf) {
+int SSL_CONN::send(void *buf, int size) {
 
-	int res, tries = 0;
-	do {
-		res = SSL_write(conn,buf,sizeof(buf));
-		if(!res) handshake();
-	} while (!res && (tries++) <=3);
+	bool done = false;
+	while (!done) {
+		int ret = SSL_write(conn,buf,size);
+		snd_data(); // ugly: push data manually as we are dealing with membufs
 
-	return 1;
+		switch(SSL_get_error(conn, ret)) {
+		case SSL_ERROR_NONE:
+			done = true;
+			return 1;
+		case SSL_ERROR_WANT_READ:
+			rcv_data();
+			break;
+		case SSL_ERROR_WANT_WRITE:
+			snd_data();
+			break;
+		case SSL_ERROR_ZERO_RETURN:
+		case SSL_ERROR_WANT_CONNECT:
+		case SSL_ERROR_WANT_ACCEPT:
+			do_handshake();
+			break;
+		default: // catch other fatal SSL errors
+			return 0;
+		}
+	}
+
+	return 0;
 }
 
-int SSL_CONN::receive(unsigned char *buf) {
-	return 1;
+int SSL_CONN::receive(void *buf, int size) {
+
+	for(;;) {
+		rcv_data(); // ugly: pull data manually as we are dealing with membufs
+		int ret = SSL_read(conn, buf, size);
+
+		if(ret > 0) return ret;
+
+		switch(SSL_get_error(conn, ret)) {
+		case SSL_ERROR_NONE:
+			return 0;
+			break;
+		case SSL_ERROR_ZERO_RETURN:
+		case SSL_ERROR_WANT_CONNECT:
+		case SSL_ERROR_WANT_ACCEPT:
+			do_handshake();
+			break;
+		default:
+			return -1;
+		}
+
+	}
+
+	return -1;
 }
 
+int SSL_CONN::data_avail() {
+	rcv_data();
+	return SSL_pending(conn);
+}
 
 
 
@@ -121,67 +164,36 @@ int SSL_CONN::receive(unsigned char *buf) {
  *               private functions
  * *******************************************************
  */
-void SSL_CONN::handshake() {
+int SSL_CONN::do_handshake() {
 
 	int done = 0;
 	while (!done) {
-		/* Perform the handshake. This in turn will activate the
-		 * underlying connect BIO and a socket connection will be made
-		 */
 		int temp = SSL_do_handshake(conn);
+		snd_data(); // ugly: push data manually as we are dealing with membufs
 
-		/* Because memmory BIOs can grow indefenitly, we will never
-		 * get the error SSL_ERROR_WANT_WRITE. It's up to us to send
-		 * the data every now and then. So I am doing it here.
-		 */
-		snd_data();
-
-		/* The SSL_get_error() call categorizes errors into groups */
+		// take action based on SSL errors
 		switch (SSL_get_error(conn, temp)) {
 		case SSL_ERROR_NONE:
-			/* Handshake has finished successfully. */
+			cout << str_role << ": handshake complete" << endl;
 			done = 1;
-			break;
-		case SSL_ERROR_SSL:
-			/* Handshake error - report and exit. */
-			if (SSL_DEBUG) cout << str_role << ": available " << SSL_get_cipher_list(conn, 0) << endl;
-			if (SSL_DEBUG) cout << str_role << ": ERROR: Handshake failure\n" << endl;
-			print_err();
-			break;
-		case SSL_ERROR_SYSCALL:
-			/* System call error. This error is different from
-			 * the SSL_ERROR_SSL in that errno (under unix)
-			 * has the numeric error value, and it is not
-			 * converted into text. If doing an SSL_read() or
-			 * SSL_write() there is no recorded error in the error
-			 * logging. This is because the error could be a
-			 * 'retry' error of which the library is unaware.
-			 */
-			if (SSL_DEBUG) cout << str_role << " ERROR: System call error = ...\n" << endl;
-			print_err();
 			break;
 		case SSL_ERROR_WANT_READ:
 			rcv_data();
 			break;
 		case SSL_ERROR_WANT_WRITE:
-			// we get this message, if e.g. the send-buf is full
 			snd_data();
 			break;
-		case SSL_ERROR_WANT_CONNECT:
-			/* Perform the handshake again. These errors are normally
-			 * only reported when doing non-blocking I/O.
-			 */
-			break;
+		case SSL_ERROR_SSL:
+		case SSL_ERROR_SYSCALL:
 		case SSL_ERROR_ZERO_RETURN:
-			/* A read(2)/write(2) system call returned 0 (usually
-			 * because the socket was closed). If the socket is
-			 * closed, the protocol has failed.
-			 */
-			if (SSL_DEBUG) cout << str_role << ": socket closed\n" << endl;
-			break;
+		default:
+			print_err();
+			return 0;
 		}
-		sleep(1);
+		//sleep(1);
 	}
+
+	return 1;
 }
 
 
@@ -193,7 +205,7 @@ void SSL_CONN::rcv_data() {
 	while(socket->available()>0) {
 
 		// blocking socket
-		int len = socket->receive(boost::asio::buffer(&buf, sizeof(buf)));
+		int len = socket->receive(boost::asio::buffer(buf, sizeof(buf)));
 		BIO_write(bioIn,buf,len);
 
 		if (SSL_DEBUG) cout << str_role << ": rcv " << len << " bytes" << endl;
@@ -216,7 +228,7 @@ void SSL_CONN::snd_data() {
 void SSL_CONN::print_err() {
 	//ERR_print_errors(bio_err);
 	cerr << str_role << ": " << ERR_error_string(ERR_get_error(), NULL) << endl;
-	exit(EXIT_FAILURE	);
+	// exit(EXIT_FAILURE);
 }
 
 

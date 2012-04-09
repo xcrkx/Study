@@ -12,7 +12,7 @@
 using namespace std;
 using boost::asio::ip::tcp;
 
-const bool SSL_DEBUG = true;
+const bool SSL_DEBUG = false;
 
 enum role {SERVER, CLIENT};
 const size_t BUFSIZE = 256;
@@ -24,8 +24,9 @@ public:
 	~SSL_CONN();
 
 	void start();
-	int send(unsigned char *buf);
-	int receive(unsigned char *buf);
+	int send(void *buf, int size);
+	int receive(void *buf, int size);
+	int data_avail();
 private:
 	enum role role;
 	string str_role;
@@ -38,7 +39,7 @@ private:
 
 	tcp::socket *socket;
 
-	void handshake();
+	int do_handshake();
 	void snd_data();
 	void rcv_data();
 	void print_err();
