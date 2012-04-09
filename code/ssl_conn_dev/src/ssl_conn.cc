@@ -17,21 +17,34 @@
 
 SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 	if (_role != SERVER && _role != CLIENT)
-		exit(1);
+		exit(EXIT_FAILURE);
 
 	socket 				= _socket;
 	role 				= _role;
 	str_role 			= (role==CLIENT) ? "CLIENT":"SERVER";
 
 	SSL_load_error_strings();
+	ERR_load_BIO_strings();
 	SSL_library_init();
+	cerr << str_role << ": " << ERR_error_string(ERR_get_error(), NULL) << endl;
 
-	SSL_METHOD *meth 	= (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
-	ctx 				= SSL_CTX_new(meth);
-	conn 				= SSL_new(ctx);
-	bioIn 				= BIO_new(BIO_s_mem());
-	bioOut 				= BIO_new(BIO_s_mem());
-	bio_err 			= BIO_new_fp(stderr, BIO_NOCLOSE);
+	SSL_METHOD *meth = (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
+
+	ctx = SSL_CTX_new(meth);
+	if (!ctx) print_err();
+
+	conn = SSL_new(ctx);
+	if (!conn) print_err();
+
+	bioIn = BIO_new(BIO_s_mem());
+	if (!bioIn) print_err();
+
+	bioOut = BIO_new(BIO_s_mem());
+	if (!bioOut) print_err();
+
+	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
+	if (!bio_err) print_err();
+
 	SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
 
 	char password[] = "test";
@@ -40,13 +53,14 @@ SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 
 	// used following cmd to get list of correct cipher lists
 	// $ openssl ciphers -tls1 "aRSA:AES:-kEDH:-ECDH:-SRP:-PSK:-NULL:-EXP:-MD5:-DES"
-	if(!SSL_CTX_set_cipher_list(ctx, "RC4-SHA")){
+	if(!SSL_CTX_set_cipher_list(ctx, "RC4-SHA"))
 		print_err();
-	}
 
 	if(role==CLIENT) {
 		SSL_CTX_use_certificate_file(ctx, "../certs/client.pem", SSL_FILETYPE_PEM);
 		SSL_CTX_use_RSAPrivateKey_file(ctx, "../certs/key.pem", SSL_FILETYPE_PEM);
+		if (!SSL_CTX_load_verify_locations(ctx,"../certs/demoCA/cacert.pem",NULL))
+			print_err();
 
 	} else if(role==SERVER) {
 		SSL_CTX_use_certificate_file(ctx, "../certs/demoCA/cacert.pem", SSL_FILETYPE_PEM);
@@ -61,21 +75,53 @@ SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 
 SSL_CONN::~SSL_CONN() {
 	// todo ...
-	ERR_free_strings();
 	cout << "deconstructor end" << endl;
+
+	SSL_shutdown(conn);
+
+	ERR_free_strings();
+	SSL_CTX_free(ctx);
+	SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
 }
-
-
-
 
 
 void SSL_CONN::start() {
 	// Start SSL-connection as client
 	(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
 
+	handshake();
+}
+
+int SSL_CONN::send(unsigned char *buf) {
+
+	int res, tries = 0;
+	do {
+		res = SSL_write(conn,buf,sizeof(buf));
+		if(!res) handshake();
+	} while (!res && (tries++) <=3);
+
+	return 1;
+}
+
+int SSL_CONN::receive(unsigned char *buf) {
+	return 1;
+}
+
+
+
+
+
+/*
+ * *******************************************************
+ *               private functions
+ * *******************************************************
+ */
+void SSL_CONN::handshake() {
+
+	int round = 0;
 	int done = 0;
 	while (!done) {
-
+		cout << "Round " << round++ << endl;
 		/* Perform the handshake. This in turn will activate the
 		 * underlying connect BIO and a socket connection will be made
 		 */
@@ -140,7 +186,7 @@ void SSL_CONN::rcv_data() {
 
 	if (SSL_DEBUG) cout << str_role << ": Check read buffer ... " << endl;
 
-	unsigned char buf[1024];
+	unsigned char buf[BUFSIZE];
 	while(socket->available()>0) {
 
 		// blocking socket
@@ -154,7 +200,7 @@ void SSL_CONN::rcv_data() {
 void SSL_CONN::snd_data() {
 	if (SSL_DEBUG) cout << str_role << ": Check send buffer ... " << endl;
 
-	unsigned char buf[1024];
+	unsigned char buf[BUFSIZE];
 	while(BIO_ctrl_pending(bioOut) > 0) {
 		int len = BIO_read(bioOut,buf,sizeof(buf));
 		socket->send(boost::asio::buffer(buf, len));
@@ -164,14 +210,23 @@ void SSL_CONN::snd_data() {
 
 }
 
+void SSL_CONN::print_err() {
+	//ERR_print_errors(bio_err);
+	cerr << str_role << ": " << ERR_error_string(ERR_get_error(), NULL) << endl;
+	exit(EXIT_FAILURE	);
+}
+
+
+/*
+ * *******************************************************
+ *               extra functions
+ * *******************************************************
+ */
 int pem_passwd_cb(char *buf, int size, int rwflag, void *password) {
 	strncpy(buf, (char *)(password), size);
 	buf[size - 1] = '\0';
 	return(strlen(buf));
 }
 
-void SSL_CONN::print_err() {
-	//ERR_print_errors(bio_err);
-	cerr << str_role << ": " << ERR_error_string(ERR_get_error(), NULL) << endl;
-	exit(-1);
-}
+
+

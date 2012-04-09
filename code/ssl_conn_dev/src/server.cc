@@ -41,19 +41,12 @@ void Server::start() {
 		if(!ec)
 			cout << "Server: connected" << endl;
 
-		/*
-		// 1. Längenfeld empfangen
-		int length_field;
-		socket.receive(boost::asio::buffer(&length_field, sizeof(int)), NULL, ec);
-		cout << "Server: rcved " << length_field << endl;
+		SSL_CONN ssl_conn(&socket, SERVER);
+		ssl_conn.start();
 
-		// 2. Daten empfangen
-		char data[length_field];
-		socket.receive(boost::asio::buffer(&data, length_field), NULL, ec);
-		cout << "Server: rcved " << data << endl;
-		*/
-		SSL_CONN s(&socket, SERVER);
-		s.start();
+		// Lets start communicating over a secure connection
+		// ssl_conn.send(&buf);
+		// ssl_conn.receive(&buf);
 
 		cout << "Server: Closing" << endl;
 		socket.close();

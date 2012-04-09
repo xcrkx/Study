@@ -24,6 +24,8 @@ public:
 	~SSL_CONN();
 
 	void start();
+	int send(unsigned char *buf);
+	int receive(unsigned char *buf);
 private:
 	enum role role;
 	string str_role;
@@ -36,12 +38,16 @@ private:
 
 	tcp::socket *socket;
 
+	void handshake();
 	void snd_data();
 	void rcv_data();
 	void print_err();
-
 };
 
-int pem_passwd_cb(char *buf, int size, int rwflag, void *userdata);
+// For now, this functions is not integrable because
+// SSL_CTX_set_default_passwd_cb needs a function pointer. But
+// class functions do not provide static function pointers.
+int pem_passwd_cb(char *buf, int size, int rwflag, void *password);
+
 
 #endif /* SSL_CONN_HH_ */

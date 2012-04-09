@@ -50,20 +50,12 @@ void Client::connect() {
 			}
 		}
 
-		/*
-		// 1. send the length of the data
-		int length_field = 16;
-		socket.send(boost::asio::buffer(&length_field, sizeof(int)));
+		SSL_CONN ssl_conn(&socket, CLIENT);
+		ssl_conn.start();
 
-		// 2. send data with length n
-		char data[length_field];
-		strcpy(data, "Yey, got ya!");
-		socket.send(boost::asio::buffer(&data, length_field));
-		 */
-
-		SSL_CONN s(&socket, CLIENT);
-		s.start();
-
+		// Lets start communicating over a secure connection
+		// ssl_conn.send(&buf);
+		// ssl_conn.receive(&buf);
 
 		cout << "Client: Closing" << endl;
 
