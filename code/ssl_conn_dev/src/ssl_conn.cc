@@ -26,26 +26,14 @@ SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 	SSL_load_error_strings();
 	ERR_load_BIO_strings();
 	SSL_library_init();
-	cerr << str_role << ": " << ERR_error_string(ERR_get_error(), NULL) << endl;
 
 	SSL_METHOD *meth = (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
 
 	ctx = SSL_CTX_new(meth);
 	if (!ctx) print_err();
 
-	conn = SSL_new(ctx);
-	if (!conn) print_err();
-
-	bioIn = BIO_new(BIO_s_mem());
-	if (!bioIn) print_err();
-
-	bioOut = BIO_new(BIO_s_mem());
-	if (!bioOut) print_err();
-
-	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-	if (!bio_err) print_err();
-
-	SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
+    const SSL_METHOD *meth 	= (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
+	ctx = SSL_CTX_new(meth);
 
 	char password[] = "test";
 	SSL_CTX_set_default_passwd_cb(ctx, &pem_passwd_cb); //passphrase for both the same
@@ -71,6 +59,19 @@ SSL_CONN::SSL_CONN(tcp::socket *_socket, enum role _role) {
 		if (SSL_DEBUG) cout << str_role << ": dooong. wow" << endl;
 		print_err();
 	}
+
+	conn = SSL_new(ctx);
+	if (!conn) print_err();
+
+	bioIn = BIO_new(BIO_s_mem());
+	if (!bioIn) print_err();
+
+	bioOut = BIO_new(BIO_s_mem());
+	if (!bioOut) print_err();
+
+	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
+	if (!bio_err) print_err();
+	SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
 }
 
 SSL_CONN::~SSL_CONN() {
