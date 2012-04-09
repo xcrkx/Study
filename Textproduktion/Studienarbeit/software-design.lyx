@@ -1,0 +1,424 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass scrartcl
+\begin_preamble
+\usepackage[flushleft, neverdecrease]{paralist}	%flushleft, damit bei Aufzählungen die römischen Zahlen links stehen; nodecrease für einen gleichen Abstand zwischen Zahlen und Text
+\usepackage{booktabs} % Klasse zur Erstellung von schönen, mehrzeiligen Tabellen
+\usepackage{tabularx} % Weitere Klasse zum erstellen von Tabellen
+% \usepackage{newalg} % Packet zum Erstellen von Algorithmen
+% \usepackage{fancyhdr}% Mit dieser Klasse lassen umfangreiche Kopf- und Fusszeilen aufbauen
+\usepackage{graphicx} % Diese Klasse ermöglicht das Arbeiten mit Grafiken
+
+\graphicspath{{grafiken/}} % Setzt einen Standardpfad für alle Grafiken. So muss der Pfad beim Einbinden von Grafiken nicht mehr vollständig angegeben werden, sondern nur der Name der Datei! (siehe z.B. Humboldtsiegel)
+
+%Einstellungen der Seitenränder
+%\usepackage[inner=2.3cm,outer=4.6cm,top=3.3cm,bottom=6.6cm,includeheadfoot]{geometry}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{libertine}
+%\usepackage{garamond}
+
+%opening
+\title{Dokument}
+\author{Christian Ricardo Kühne}
+\date{}
+\end_preamble
+\options a4paper
+\use_default_options true
+\maintain_unincluded_children false
+\language ngerman
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 12
+\spacing other 1.2
+\use_hyperref false
+\papersize a4paper
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 23mm
+\topmargin 33mm
+\rightmargin 46mm
+\bottommargin 66mm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language german
+\papercolumns 1
+\papersides 1
+\paperpagestyle headings
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Subsection
+Design des Click-Systems
+\end_layout
+
+\begin_layout Standard
+(Zeichnungen und Grafiken werden später hinzugefügt.)
+\end_layout
+
+\begin_layout Minisec
+
+\color green
+Akronyme und Definitionen
+\end_layout
+
+\begin_layout Standard
+
+\color green
+\begin_inset Tabular
+<lyxtabular version="3" rows="2" columns="2">
+<features tabularvalignment="middle">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\color green
+KDP
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\color green
+Key-Distribution-Protokoll
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\color green
+MeshNode
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\color green
+MeshClient/MeshRouter
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Vorüberlegungen
+\end_layout
+
+\begin_layout Itemize
+Phase 1 des mobisec ist implizit dadurch realisiert, dass der MeshNode eine
+ TLS-Session mit dem Authentisierungsserver aufbauen darf.
+ 
+\end_layout
+
+\begin_layout Itemize
+NTP4 ist auf den Knoten installiert.
+\end_layout
+
+\begin_layout Minisec
+Grobe Planung der Entwicklungsphasen:
+\end_layout
+
+\begin_layout Enumerate
+Es soll lediglich zwei Kommunikationsteilnehmer geben -- MeshNode und Authentisi
+erungsserver --, die jeweils ein einfaches KD-Protokoll ausführung.
+ Dieses versucht lediglich eine TLS-Session aufzubauen.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Das KD-Protokoll wird um die eigentliche KD-Funktionalität erweitert werden.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Weitere MeshNodes sollen hinzugefügt werden.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Netzwerktopologie
+\end_layout
+
+\begin_layout Itemize
+MeshNode: mesh_node.click
+\end_layout
+
+\begin_layout Itemize
+Authentisierungsserver: server.click
+\end_layout
+
+\begin_layout Itemize
+mesh_node.click, server.click: beide enthalten TLS- und KD-Protokoll
+\end_layout
+
+\begin_layout Itemize
+bootstraping zwischen dem Server und der MeshNode; 
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+beginn mit KDP
+\end_layout
+
+\begin_layout Itemize
+falls keine tls-session vorhanden, führe tls-proto aus
+\end_layout
+
+\begin_layout Itemize
+führe eigentlichen kpd aus
+\end_layout
+
+\begin_layout Itemize
+gelingt dies, wird der client router zum mesh router (rollen-upgrade) und
+ muss dieses Zustand irgendwie propagieren oder abrufbereitshalten für höhere
+ Netzwerkschichten; 
+\end_layout
+
+\begin_layout Itemize
+beginn der MeshRouter-Dienste:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+routing
+\end_layout
+
+\begin_layout Itemize
+forwarding (auth pkt, data pkt)
+\end_layout
+
+\begin_layout Itemize
+Verarbeitung eigener empfangener Pkt
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Itemize
+Laufzeit: 
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Aus- und Weiterführung der MeshRouter-Dienste
+\end_layout
+
+\begin_layout Itemize
+(parallel dazu kann ein simpleflow betrieben zum testen) 
+\end_layout
+
+\end_deeper
+\begin_layout Subsubsection
+Architektur
+\end_layout
+
+\begin_layout Itemize
+Elemente/Elementklassen in mesh_node.click:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+wifidev, ethencap, classifier 
+\end_layout
+
+\begin_layout Itemize
+timer (for kdp)
+\end_layout
+
+\begin_layout Itemize
+tls: tls_client.cc, tls_server.cc
+\end_layout
+
+\begin_layout Itemize
+kdp: kpd_client.cc, kpd_server.cc
+\end_layout
+
+\begin_layout Itemize
+security-switch (dient als Schalter, um Pkt unterschiedlich zu behandeln,
+ je nach dem, ob sie über einen sicheren kanal kommen.)
+\end_layout
+
+\begin_layout Itemize
+simpleflow (zum testen)/receive
+\end_layout
+
+\begin_layout Itemize
+meshrouter_services: routing, forwarding, ...
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Elemente in server.click (ähnlich wie oben):
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+wifidev, ethencap, classifier
+\end_layout
+
+\begin_layout Itemize
+tls
+\end_layout
+
+\begin_layout Itemize
+kpd
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Struktur für kdp-pkt (nach spec)
+\end_layout
+
+\begin_layout Itemize
+kdp führt die Kommunikation und entscheidet, wann tls-proto verwendet werden
+ soll.
+ Er kümmert sich auch darum, den timer zu setzen.
+\end_layout
+
+\begin_layout Itemize
+openssl: verwende bio im memory modus, um die daten in click-pkt zu verpacken
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Hilfe liefert openssl-users@openssl.org Mailingliste
+\end_layout
+
+\begin_layout Itemize
+bio_f_ssl??
+\end_layout
+
+\end_deeper
+\begin_layout Subsubsection
+Kommunikation
+\end_layout
+
+\begin_layout Itemize
+MeshNode startet bei der Initialisierung durch den Beginn des kdp einen
+ erste tls-Verbindungsversuche; 
+\end_layout
+
+\begin_layout Itemize
+kdp setzt nach erfolgreichen erhalt des Schlüsselmaterials und timestamp
+ den Timer für den nächsten Pull des Schlüsselmaterials.
+\end_layout
+
+\begin_layout Itemize
+MeshNode besitzt einen Timer, der den nächsten Verbindungsaufbau auslöst.
+\end_layout
+
+\begin_layout Itemize
+Handler einrichten für testdaten-transfer (simpleflow)
+\end_layout
+
+\begin_layout Subsubsection
+Testing
+\end_layout
+
+\begin_layout Itemize
+fromdump
+\end_layout
+
+\begin_layout Itemize
+simple flow oder Ähnliches
+\end_layout
+
+\begin_layout Subsubsection
+Offene Fragen
+\end_layout
+
+\begin_layout Itemize
+Wie lässt sich der Zustand einer TLS-Session speichern?
+\end_layout
+
+\begin_layout Itemize
+Wie lässt sich ein Schalter für die MeshRouter-Dienste realisieren?
+\end_layout
+
+\begin_layout Itemize
+Wie kann ich neue WEP-Schlüssel in einem laufenden Click-Router aktivieren?
+\end_layout
+
+\begin_layout Itemize
+Welches wifi-Element entspricht am ehesten meinen Anforderungen: wifidev_ap.click
+, wifidev_client, wifidev_linkstat?
+\end_layout
+
+\begin_layout Itemize
+Sollten die WEP-Schlüssel veraltet sein, muss eine neue TLS-Verbidung aufgebaut
+ werden.
+ doch woran merk dies der mRouter?
+\end_layout
+
+\begin_layout Itemize
+Selbstorganisierte auswahl des Authentication-Servers.
+ Hier ist höchst wahrscheinlich ein weiteres Protokoll erforderlich.
+ 
+\end_layout
+
+\end_body
+\end_document
