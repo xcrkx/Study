@@ -34,16 +34,26 @@ int main() {
 			SSL_CONN ssl_conn(&socket, SERVER);
 			ssl_conn.start();
 
-			// start ssl communication
-			int tries = 5, test, len;
-			while (0 < tries--) {
+			// benchmarking
+			if (true) {
+				int attempts = 3;
+				int tries = attempts;
 
-				if ((len = ssl_conn.receive(&test, sizeof(int))) > 0) {
+				// Benchmark-Test
+				while(tries > 0) {
 
-					cout << "Server: SSL: Received " << len << " bytes: " << test << endl;
-					tries = 5; // reset tries
+					char test[256];
+					int len = 256;
+
+					if ((len = ssl_conn.receive(&test, len)) > 0) {
+						string test_string;
+						test_string = test;
+						cout << "Server: SSL: Received " << len << " bytes: " << test_string.c_str() << endl;
+						tries = attempts; // reset tries
+					}
+
+					sleep(1); tries--;
 				}
-				sleep(1);
 			}
 
 			cout << "Server: Closing" << endl;

@@ -35,11 +35,13 @@ int main() {
 		SSL_CONN ssl_conn(&socket, CLIENT);
 		ssl_conn.start();
 
-		// start ssl communication
-		int test = 43;
-		if (ssl_conn.send(&test, sizeof(int)))
-			cout << "Client: SSL: Sent mystical number..." << endl;
+		// Benchmark-Test
+		if (true) {
 
+			char str[] = "Por la locura acaso se podía llegar a una razón que no fuera esa razón, cuya falencia es la locura";
+			ssl_conn.send(str, sizeof(str)/sizeof(char));
+
+		}
 		cout << "Client: Closing" << endl;
 		socket.close();
 

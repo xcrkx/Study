@@ -15,7 +15,7 @@ using boost::asio::ip::tcp;
 const bool SSL_DEBUG = false;
 
 enum role {SERVER, CLIENT};
-const size_t BUFSIZE = 256;
+const size_t BUFSIZE = 128;
 
 
 class SSL_CONN{
@@ -26,7 +26,6 @@ public:
 	void start();
 	int send(void *buf, int size);
 	int receive(void *buf, int size);
-	int data_avail();
 private:
 	enum role role;
 	string str_role;
@@ -40,8 +39,8 @@ private:
 	tcp::socket *socket;
 
 	int do_handshake();
-	void snd_data();
-	void rcv_data();
+	int snd_data();
+	int rcv_data();
 	void print_err();
 };
 
