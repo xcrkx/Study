@@ -119,24 +119,33 @@ void SSL_CONN::send(void *data, int size) {
 	}
 }
 
+/*
+ * On SSL_CONN::receive(): What if multiple records were sent? How do I handle this
+ * in this function?
+ */
+
 // non-blocking
-data *SSL_CONN::receive() {
+data_t *SSL_CONN::receive() {
 	bool handshaked = false;
 
 	rcv_data(); // read from socket to feed SSL_read
 
-	// No matter if size is 0, it's possibly more important
-	// to go on to SSL_read and do_handshake. Just a guess :)
-	int size = SSL_pending(conn);
-	data *data = new unsigned char[size];
-	if(!data) {
-		BIO_puts(bio_err, "SSL_CONN::receive no memory allocated.");
-		print_err();
-		return NULL;
-	}
-
-	// re-negotiation is always possible, so SSL_read must be repeated once
-	for(int tries = 0; tries < 2; tries++) {
+	// It's okay to try several times. Reasons are re-negotiation; SSL_read
+	// uncomplete; SSL_pending returns 0.
+	for(int tries = 0; tries < 3; tries++) {
+		/* Check for application data.
+		 * No matter if size is 0, it's possibly more important
+		 * to go on to SSL_read and do_handshake. Just a guess :)
+		 * In case of size>0 SSL proccessed a full record which
+		 * is ready to pick.
+		 */
+		int size = SSL_pending(conn);
+		data_t *data = (data_t *)malloc(size);
+		if(!data) {
+			BIO_puts(bio_err, "SSL_CONN::receive no memory allocated.");
+			print_err();
+			return NULL;
+		}
 
 		int ret = SSL_read(conn,data,size); // data received in records of max 16kB
 
@@ -147,6 +156,9 @@ data *SSL_CONN::receive() {
 			do_handshake();
 			handshaked = true;
 		}
+
+		// if no app data retrievable, free memory
+		if(data) free(data);
 	}
 	return NULL;
 }

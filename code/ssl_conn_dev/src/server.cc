@@ -46,7 +46,7 @@ int main() {
 					if(string) {
 						cout << "Server: SSL: Received: " << string << endl;
 						tries = attempts; // reset tries
-						delete string;
+						free(string);
 					}
 
 					sleep(1); tries--;

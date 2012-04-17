@@ -17,7 +17,7 @@ const bool SSL_DEBUG = false;
 enum role {SERVER, CLIENT};
 const size_t BUFSIZE = 128;
 
-typedef unsigned char data;
+typedef unsigned char data_t;
 
 
 class SSL_CONN{
@@ -27,7 +27,7 @@ public:
 
 	void start();
 	void send(void *data, int size);
-	data * receive();
+	data_t * receive();
 private:
 	enum role role;
 	string str_role;
