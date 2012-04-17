@@ -83,6 +83,7 @@ SSL_CONN::~SSL_CONN() {
 	ERR_free_strings();
 	SSL_CTX_free(ctx);
 	SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
+	BIO_free(bio_err);
 }
 
 
@@ -94,10 +95,11 @@ void SSL_CONN::start() {
 }
 
 // non-blocking
-int SSL_CONN::send(void *buf, int size) {
+void SSL_CONN::send(void *data, int size) {
 	if(size<=0){
 		BIO_puts(bio_err, "SSL_write with bufsize=0 is undefined.");
-		return 0;
+		print_err();
+		return;
 	}
 
 	bool handshaked = false;
@@ -105,41 +107,49 @@ int SSL_CONN::send(void *buf, int size) {
 	// re-negotiation is always possible, so SSL_read must be repeated
 	for(int tries = 0; tries < 2; tries++) {
 
-		int ret = SSL_write(conn,buf,size);
+		int ret = SSL_write(conn,data,size);
 		if(ret>0) snd_data(); // read from membuf and put into socket
 
 		if(ret>0) {
-			return ret;
+			return;
 		} else if (!handshaked) {
 			do_handshake();
 			handshaked = true;
 		}
 	}
-	return 0;
 }
 
 // non-blocking
-int SSL_CONN::receive(void *buf, int size) {
+data *SSL_CONN::receive() {
 	bool handshaked = false;
+
+	rcv_data(); // read from socket to feed SSL_read
+
+	// No matter if size is 0, it's possibly more important
+	// to go on to SSL_read and do_handshake. Just a guess :)
+	int size = SSL_pending(conn);
+	data *data = new unsigned char[size];
+	if(!data) {
+		BIO_puts(bio_err, "SSL_CONN::receive no memory allocated.");
+		print_err();
+		return NULL;
+	}
 
 	// re-negotiation is always possible, so SSL_read must be repeated once
 	for(int tries = 0; tries < 2; tries++) {
 
-		rcv_data(); // read from socket to feed SSL_read
-		int ret = SSL_read(conn,buf,size); // data received in records of max 16kB
+		int ret = SSL_read(conn,data,size); // data received in records of max 16kB
 
 		// if SSL_read was successful receiving full records, then ret > 0
 		if(ret > 0) {
-			return ret;
+			return data;
 		} else if (!handshaked) {
 			do_handshake();
 			handshaked = true;
 		}
 	}
-	return 0;
+	return NULL;
 }
-
-
 
 
 /*
@@ -220,7 +230,7 @@ int SSL_CONN::snd_data() {
 }
 
 void SSL_CONN::print_err() {
-	//ERR_print_errors(bio_err);
+	ERR_print_errors(bio_err);
 	cerr << str_role << ": " << ERR_error_string(ERR_get_error(), NULL) << endl;
 	// exit(EXIT_FAILURE);
 }

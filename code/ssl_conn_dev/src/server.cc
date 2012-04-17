@@ -42,14 +42,11 @@ int main() {
 				// Benchmark-Test
 				while(tries > 0) {
 
-					char test[256];
-					int len = 256;
-
-					if ((len = ssl_conn.receive(&test, len)) > 0) {
-						string test_string;
-						test_string = test;
-						cout << "Server: SSL: Received " << len << " bytes: " << test_string.c_str() << endl;
+					char *string = (char *)ssl_conn.receive();
+					if(string) {
+						cout << "Server: SSL: Received: " << string << endl;
 						tries = attempts; // reset tries
+						delete string;
 					}
 
 					sleep(1); tries--;
